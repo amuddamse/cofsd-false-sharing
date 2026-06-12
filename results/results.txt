@@ -1,0 +1,99 @@
+╔════════════════════════════════════════════════════════════╗
+║  COFSD: Counter-Only False Sharing Detection (Fixed)       ║
+║  Accurate coherence model: counts only actual Get/GetX/Inv ║
+║  Based on Phoenix linear_regression.c + string_match.c     ║
+╚════════════════════════════════════════════════════════════╝
+
+================================================================
+Benchmark 1: linear_regression (PHOENIX)
+Type:        Write-Write false sharing
+Location:    emit_intermediate() intermediate results array
+================================================================
+  Threads:                  8
+  Iterations:               200
+  Total accesses:           8000
+  Total invalidations:      1960
+  Invalidation rate:        24.5%
+  COFSD detections:         5
+
+  First detection:
+    Line 0x10040  FC=17  IC=16
+    Type: write-write
+    Writers: threads [1, 2, 3]
+    Accessors: threads [1, 2, 3]
+
+================================================================
+Benchmark 2: string_match (PHOENIX)
+Type:        Write-Read false sharing
+Location:    str_data_t struct in string_match_splitter()
+  Splitter writes bytes_comp [offset 8]
+  Map threads read keys_file_len [offset 0] — same line
+================================================================
+  Threads:                  8
+  Iterations:               200
+  Total accesses:           3000
+  Total invalidations:      1593
+  Invalidation rate:        53.1%
+  COFSD detections:         1
+
+  First detection:
+    Line 0x20000  FC=17  IC=16
+    Type: write-read
+    Writers: threads [0]
+    Accessors: threads [0, 1, 2, 3, 4, 5, 6, 7]
+
+================================================================
+Control 1: True Sharing (mutex lock)
+All threads write to SAME variable — COFSD must NOT flag
+================================================================
+  Total accesses:           3200
+  Total invalidations:      1599
+  Invalidation rate:        50.0%
+  COFSD detections:         1  ← expected 0
+
+================================================================
+Control 2: No Sharing (private aligned arrays)
+Each thread writes to its own 4KB-separated cache line
+================================================================
+  Total accesses:           1600
+  Total invalidations:      0
+  COFSD detections:         0  ← expected 0
+
+================================================================
+τP Threshold Sensitivity Analysis
+Tradeoff: lower τP = faster detection, higher false-positive risk
+================================================================
+    τP    LR det    SM det     TS FP    Detect latency
+------------------------------------------------------
+     4         5         1         1  ~4 coherence msgs
+     8         5         1         1  ~8 coherence msgs
+    16         5         1         1  ~16 coherence msgs
+    32         5         1         1  ~32 coherence msgs
+    64         5         1         1  ~64 coherence msgs
+
+================================================================
+Hardware Cost: FSDetect vs COFSD
+System: 8-core, 32KB L1D per core, 2MB LLC per core
+================================================================
+
+Component                            FSDetect        COFSD
+----------------------------------------------------------
+PAM tables (8 cores × 8KB)             64.5KB            0
+SAM tables (8 slices)                  88.0KB            0
+Dir bits/entry                            20b          32b
+COFSD dir overhead total                    —       4.00KB
+Total metadata                        152.5KB       4.00KB
+% of LLC                               0.9%       0.02%
+REP_MD messages                      Required         None
+
+  Area reduction: 38× less metadata storage
+
+================================================================
+FINAL RESULTS: COFSD Detection Accuracy
+================================================================
+Scenario                               Type             Det  Correct?
+--------------------------------------------------------------------
+linear_regression (false sharing)      write-write        5         ✅
+string_match (false sharing)           write-read         1         ✅
+true_sharing — must be 0               true share         1         ❌
+no_sharing — must be 0                 private            0         ✅

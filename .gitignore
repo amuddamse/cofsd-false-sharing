@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env/
+venv/
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Editor
+.vscode/
+*.swp
+*~
+
+# Build artifacts
+*.o
+*.a
+*.so
+
+# Large Phoenix build output (don't track compiled binaries)
+benchmarks/phoenix/*.o
+benchmarks/phoenix/linear_regression
+benchmarks/phoenix/string_match
+
+# Temporary files
+*.tmp
+*.log
