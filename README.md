@@ -39,7 +39,7 @@ COFSD_Final_Project.pptx    # Presentation slides
 **Requirements**: Python 3.x (standard library only, no additional packages needed)
 
 
-%cd src
+%cd src ;
 %python3 false_sharing_detector.py
 
 
